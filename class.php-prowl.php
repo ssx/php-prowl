@@ -6,49 +6,164 @@
  * API service for pushing notifications to iOS devices.
  * @author Scott Wilcox <scott@dor.ky>
  * @version 0.1
- * @package php-prowl
+ * @package php-prowl	
  */
 class Prowl
 {
-	private $api_root = "https://prowl.weks.net/publicapi/add";
+	private $api_root = "https://prowl.weks.net/publicapi/";
 	private $user_agent = "php-prowl <http://dor.ky>";
 	private $api_key = null;
-
+	private $request_method = "GET";
+	private $http_code = null;
+	private $debug = false;
+	
+	public $remaining_calls = 0;
+	public $resetdate = 0;
+	
 	public function setApiKey($key)
 	{
 		$this->api_key = $key;
 	}
-
-	public function push($applicaton, $event, $description, $url, $priority)
+	public function setProviderKey($key)
 	{
+		$this->api_provider_key = $key;
+	}
+	private function setRequestMethod($method) {
+		$this->request_method = $method;
+	}
+	public function setDebug($bool) {
+		$this->debug = $bool;
+		if (!DEMO_EOL) {
+			define("DEMO_EOL",isset($_SERVER['HTTP_USER_AGENT']) ? "<br />" : "\n");
+		}
+	}
+
+	public function add($application = "php-prowl",$event,$priority = 0,$description,$url="") {
+		if (empty($this->api_key)) {
+			throw new Exception("No API key(s) set.");
+		}
+			
+		// Set POST method
+		$this->setRequestMethod("POST");
+		
 		// This is our payload for this alert
 		$fields = array(
-			'application' => $applicaton,
+			'application' => $application,
 			'event' => $event,
 			'description' => $description,
 			'url' => $url,
 			'priority' => $priority
 		);
 
-		// Encode all values in our payload with UTF8
-		foreach ($fields as $key => $value)
-		{
-			$fields[$key] = utf8_encode($value);
+		return $this->request("add",$fields);
+	}
+	
+	public function verify($key) {
+		$this->setRequestMethod("GET");
+		
+	}
+	
+	public function request_token() {
+		if (empty($this->api_provider_key)) {
+			throw new Exception("No provider key(s) set.");
+		}
+		
+		// Set GET method
+		$this->setRequestMethod("GET");		
+
+		$response = $this->request("retrieve/token");
+		if ($response) {	
+			if ($response->success["code"] == 200) {
+				return $response->retrieve;
+			} else {
+				throw new Exception("API Request Failed: ".var_dump($response));
+			}
+		}
+	}
+	
+	public function retrieve_apikey($token) {
+		if (empty($this->api_provider_key)) {
+			throw new Exception("No provider key(s) set.");
 		}
 
+		// Set GET method
+		$this->setRequestMethod("GET");		
+		
+		// Send our request out
+		$response = $this->request("retrieve/apikey",array("token" => $token));
+		if ($response) {	
+			if ($response->success["code"] == 200) {
+				return $response->retrieve["apikey"][0];
+			} else {
+				throw new Exception("API Request Failed: ".var_dump($response));
+			}
+		}		
+	}
+	
+	private function request($endpoint,$params = null) {
 		// Push the request out to the API
+		$url = $this->api_root.$endpoint;
+		if (!empty($this->api_key)) {
+			$url .= "?apikey=".$this->api_key;
+		}
+		if (!empty($this->api_provider_key)) {
+			$url .= "?providerkey=".$this->api_provider_key;
+		}
+		
+		// If we're not posting, serialise the parameters provided
+		if (!empty($params)) {
+			foreach ($params as $key => $value) {
+				$url .= "&".$key."=".$value;
+			}
+		}
+		
 		$s = curl_init();
-		curl_setopt($s, CURLOPT_URL, $this->api_root."?apikey=".$this->api_key);
-		curl_setopt($s, CURLOPT_POST, true);
-		curl_setopt($s, CURLOPT_POSTFIELDS, $fields);
+		curl_setopt($s, CURLOPT_URL, $url);
+		
+		if ($this->request_method == "POST") {
+			// Encode all values in our payload with UTF8
+			foreach ($params as $key => $value)
+			{
+				$params[$key] = utf8_encode($value);
+			}		
+			curl_setopt($s, CURLOPT_POST, true);
+			curl_setopt($s, CURLOPT_POSTFIELDS, $params);
+		}
+		
 		curl_setopt($s, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($s, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($s, CURLOPT_HTTPHEADER, array("Expect:"));
 		curl_setopt($s, CURLOPT_HEADER, false);
+		curl_setopt($s, CURLOPT_SSL_VERIFYPEER, false);		
+		curl_setopt($s, CURLINFO_HEADER_OUT, true);
 		curl_setopt($s, CURLOPT_USERAGENT, $this->user_agent);
+		
 		$response_xml = simplexml_load_string(curl_exec($s));
-		$response_code = curl_getinfo($s, CURLINFO_HTTP_CODE);
+		$this->http_code = curl_getinfo($s, CURLINFO_HTTP_CODE);		
+		
+		if ($this->debug === true) {
+			echo "API URL:".DEMO_EOL."$url".DEMO_EOL;
+			echo "<hr />";			
+			if (!empty($params)) {
+				echo "Payload (".$this->request_method."):".DEMO_EOL;			
+				if ($this->request_method == "POST") {
+					echo var_dump($params);
+				} else {
+					echo var_export($params);
+				}
+				echo "<hr />".DEMO_EOL;				
+			}
+			echo "HTTP Header:".DEMO_EOL;
+			echo curl_getinfo($s,CURLINFO_HEADER_OUT).DEMO_EOL;
+			echo "<hr />";			
+		}
+		
+		if (!empty($response_xml->success)) {
+			$this->remaining_calls = $response->success["remaining_calls"];
+			$this->resetdate = $response->success["resetdate"];		
+		}
 		curl_close($s);
-		return $response_xml;
+		return $response_xml;	
 	}
 }
 ?>
