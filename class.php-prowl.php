@@ -13,6 +13,7 @@ class Prowl
 	private $api_root = "https://prowl.weks.net/publicapi/";
 	private $user_agent = "php-prowl <http://dor.ky>";
 	private $api_key = null;
+	private $api_provider_key = null;
 	private $request_method = "GET";
 	private $http_code = null;
 	private $debug = false;
@@ -30,6 +31,21 @@ class Prowl
 	}
 	private function setRequestMethod($method) {
 		$this->request_method = $method;
+	}
+	private function buildQuery($params) {
+          $query_string = "";
+          if ($this->api_key != null)
+            $query_string .= "apikey=".$this->api_key."&";
+          
+          if ($this->api_provider_key != null)
+            $query_string .= "providerkey=".$this->api_provider_key."&";
+          if (count($params)) {
+            foreach ($params as $key => $value) {
+              $query_string .= utf8_encode("{$key}={$value}&");
+            }
+          }
+          
+          return substr($query_string, 0, -1);
 	}
 	public function setDebug($bool) {
 		$this->debug = $bool;
@@ -102,30 +118,17 @@ class Prowl
 	
 	private function request($endpoint,$params = null) {
 		// Push the request out to the API
-		$url = $this->api_root.$endpoint;
-		if (!empty($this->api_key)) {
-			$url .= "?apikey=".$this->api_key;
-		}
-		if (!empty($this->api_provider_key)) {
-			$url .= "?providerkey=".$this->api_provider_key;
-		}
-		
-		// If we're not posting, serialise the parameters provided
-		if (!empty($params)) {
-			foreach ($params as $key => $value) {
-				$url .= "&".$key."=".$value;
-			}
+		$url = $this->api_root.$endpoint;		
+		$params = $this->buildQuery($params);
+				
+		if ($this->request_method == "GET") {
+      		$url .= "?".$params;
 		}
 		
 		$s = curl_init();
 		curl_setopt($s, CURLOPT_URL, $url);
 		
 		if ($this->request_method == "POST") {
-			// Encode all values in our payload with UTF8
-			foreach ($params as $key => $value)
-			{
-				$params[$key] = utf8_encode($value);
-			}		
 			curl_setopt($s, CURLOPT_POST, true);
 			curl_setopt($s, CURLOPT_POSTFIELDS, $params);
 		}

@@ -3,8 +3,6 @@ ini_set("display_errors", "on");
 require "class.php-prowl.php";
 define("DEMO_EOL",isset($_SERVER['HTTP_USER_AGENT']) ? "<br />" : "\n");
 
-
-
 // Get a token on behalf of a user and then exchange it for an API key
 try {
 	$prowl = new Prowl();
@@ -27,6 +25,7 @@ try {
 		if ($api_key) {
 			$prowl = new Prowl();
 			$prowl->setApiKey($api_key);
+           	$prowl->setProviderKey("3e116a8f549ea41964f9dc682007ca2fd8e5a478");
 			$prowl->setDebug(true);
 			
 			$application = "Example Application";
@@ -36,7 +35,7 @@ try {
 			$priority = -1;
 			
 			$message = $prowl->add($application,$event,$priority,$description,$url);
-			echo var_dump($message);		
+			echo var_dump($message).DEMO_EOL;		
 		}
 	}
 } Catch (Exception $message) {
