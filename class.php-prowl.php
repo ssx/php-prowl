@@ -41,7 +41,7 @@ class Prowl
             $query_string .= "providerkey=".$this->api_provider_key."&";
           if (count($params)) {
             foreach ($params as $key => $value) {
-              $query_string .= utf8_encode("{$key}={$value}&");
+              $query_string .= "$key=".urlencode($value)."&";
             }
           }
           
