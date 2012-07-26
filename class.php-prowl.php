@@ -10,7 +10,7 @@
  */
 class Prowl
 {
-	private $api_root = "https://prowl.weks.net/publicapi/";
+	private $api_root = "https://api.prowlapp.com/publicapi/";
 	private $user_agent = "php-prowl <http://dor.ky>";
 	private $api_key = null;
 	private $api_provider_key = null;
