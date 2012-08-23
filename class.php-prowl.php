@@ -10,7 +10,7 @@
  */
 class Prowl
 {
-	private $api_root = "https://prowl.weks.net/publicapi/";
+	private $api_root = "https://api.prowlapp.com/publicapi/";
 	private $user_agent = "php-prowl <http://dor.ky>";
 	private $api_key = null;
 	private $api_provider_key = null;
@@ -41,7 +41,7 @@ class Prowl
             $query_string .= "providerkey=".$this->api_provider_key."&";
           if (count($params)) {
             foreach ($params as $key => $value) {
-              $query_string .= utf8_encode("{$key}={$value}&");
+              $query_string .= "$key=".urlencode($value)."&";
             }
           }
           
