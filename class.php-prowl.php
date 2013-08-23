@@ -49,7 +49,7 @@ class Prowl
 	}
 	public function setDebug($bool) {
 		$this->debug = $bool;
-		if (!defined(DEMO_EOL)) {
+		if (!defined('DEMO_EOL')) {
 			define("DEMO_EOL",isset($_SERVER['HTTP_USER_AGENT']) ? "<br />" : "\n");
 		}
 	}
